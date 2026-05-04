@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Home — Crime Predictor{% endblock %}
+{% block hero %}
+{% set hero_variant = 'marketing' %}
+{% set hero_eyebrow = 'Crime data analysis & prediction' %}
+{% set hero_title_line1 = 'Understand patterns.' %}
+{% set hero_title_line2 = 'Support safer decisions.' %}
+{% set hero_subtitle %}
+Explore Pakistan crime-incident aggregates on the dashboard,
+then run the trained classifier to estimate likely
+<strong class="text-white">crime category</strong> from timing and location
+inputs.
+{% endset %}
+{% include 'includes/page_hero.html' %}
+{% endblock %}
+{% block content %}
+<div class="site-container cp-page-shell cp-stack">
+  <div class="cp-home-features-grid">
+    <article class="cp-feature-card">
+      <div class="cp-card-header-row">
+        <span class="cp-icon-chip" aria-hidden="true"><i class="bi bi-bar-chart-line"></i></span>
+        <div>
+          <h2 class="cp-feature-card-title">Analytics</h2>
+          <p class="cp-feature-card-desc mb-0">
+            Hourly and regional trends from your project CSV.
+          </p>
+        </div>
+      </div>
+    </article>
+    <article class="cp-feature-card">
+      <div class="cp-card-header-row">
+        <span class="cp-icon-chip" aria-hidden="true"><i class="bi bi-geo-alt"></i></span>
+        <div>
+          <h2 class="cp-feature-card-title">Geography</h2>
+          <p class="cp-feature-card-desc mb-0">
+            Incident scatter and provincial breakdown on the dashboard.
+          </p>
+        </div>
+      </div>
+    </article>
+    <article class="cp-feature-card">
+      <div class="cp-card-header-row">
+        <span class="cp-icon-chip" aria-hidden="true"><i class="bi bi-diagram-3"></i></span>
+        <div>
+          <h2 class="cp-feature-card-title">Machine learning</h2>
+          <p class="cp-feature-card-desc mb-0">
+            Forest / logistic pipelines trained offline; inference in the browser.
+          </p>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <section class="cp-home-preview-region" aria-labelledby="home-dataset-preview-heading">
+    <div class="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3">
+      <div>
+        <p class="cp-form-card-eyebrow mb-1">Data</p>
+        <h2 id="home-dataset-preview-heading" class="cp-home-preview-heading mb-0">
+          Dataset previews
+        </h2>
+        <p class="text-muted small mb-0 mt-2" style="max-width: 42rem">
+          First <strong>{{ preview_row_limit }}</strong> rows from each CSV in
+          <code class="small">data/</code>. The <strong>active</strong> file is what the
+          <a href="{{ url_for('main.dashboard') }}">dashboard</a> and forms use after training.
+        </p>
+      </div>
+      <a href="{{ url_for('main.train') }}" class="btn btn-outline-primary btn-sm fw-semibold flex-shrink-0">
+        <i class="bi bi-folder2-open me-1" aria-hidden="true"></i> Manage datasets
+      </a>
+    </div>
+
+    {% if dataset_previews %}
+    <div class="cp-home-preview-stack">
+      {% for preview in dataset_previews %}
+      <article class="cp-home-preview-card">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+          <h3 class="cp-home-preview-filename mb-0">
+            <i class="bi bi-filetype-csv text-secondary me-1" aria-hidden="true"></i>{{ preview.filename }}
+          </h3>
+          {% if preview.is_active %}
+          <span class="badge rounded-pill cp-home-preview-active-badge">Active dataset</span>
+          {% endif %}
+        </div>
+
+        {% if preview.error %}
+        <p class="text-danger small mb-0">{{ preview.error }}</p>
+        {% elif preview.columns and preview.rows %}
+        <div class="table-responsive cp-preview-table-wrap">
+          <table class="table table-hover align-middle cp-preview-table mb-0">
+            <thead>
+              <tr>
+                {% for col in preview.columns %}
+                <th scope="col">{{ col }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in preview.rows %}
+              <tr>
+                {% for col in preview.columns %}
+                <td title="{{ row[col] }}">{{ row[col] }}</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="cp-preview-table-meta small text-muted mb-0">
+          Showing <strong>{{ preview.rows|length }}</strong> row{% if preview.rows|length != 1 %}s{% endif %}
+          (max {{ preview_row_limit }}).
+        </p>
+        {% else %}
+        <p class="text-muted small mb-0">This file has no rows to display.</p>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="cp-home-preview-card cp-home-preview-empty text-center py-4 px-3">
+      <i class="bi bi-inbox text-secondary d-block fs-2 mb-2 opacity-75" aria-hidden="true"></i>
+      <p class="text-muted small mb-2">No CSV files found in <code>data/</code> yet.</p>
+      <a href="{{ url_for('main.train') }}" class="btn btn-primary btn-sm fw-semibold">Open Train</a>
+    </div>
+    {% endif %}
+  </section>
+
+  <div class="cp-home-footnote text-center cp-home-footnote-max">
+    <p class="small mb-0 lh-lg text-muted">
+      Uses the saved model under <code class="small">models/</code> after running
+      <code class="small">python scripts/train.py</code>. See
+      <a href="{{ url_for('main.about') }}">About</a> for dataset and limitations.
+    </p>
+  </div>
+</div>
+{% endblock %}

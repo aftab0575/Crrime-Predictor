@@ -1,0 +1,50 @@
+{# Marketing: hero_variant == 'marketing' — hero_eyebrow, hero_title_line1, hero_title_line2, hero_subtitle (HTML ok) #}
+{# Default: hero_eyebrow (optional), hero_title, hero_subtitle (optional), hero_right_markup (optional HTML) #}
+{% if hero_variant is defined and hero_variant == 'marketing' %}
+<section class="page-hero hero-surface" aria-labelledby="hero-heading-home">
+  <div class="site-container hero-marketing-inner">
+    <p class="page-hero-eyebrow">{{ hero_eyebrow }}</p>
+    <h1 id="hero-heading-home" class="page-hero-title page-hero-title--center">
+      {{ hero_title_line1 }}<br />{{ hero_title_line2 }}
+    </h1>
+    <p class="page-hero-subtitle page-hero-subtitle--center">{{ hero_subtitle | safe }}</p>
+    <div class="page-hero-cta page-hero-cta--center">
+      <a
+        class="btn btn-light btn-lg px-4 fw-semibold"
+        href="{{ url_for('main.dashboard') }}"
+      >
+        <i class="bi bi-graph-up-arrow me-1" aria-hidden="true"></i> Open dashboard
+      </a>
+      <a
+        class="btn btn-outline-light btn-lg px-4 fw-semibold"
+        href="{{ url_for('main.predict') }}"
+      >
+        <i class="bi bi-cpu me-1" aria-hidden="true"></i> Predict category
+      </a>
+    </div>
+  </div>
+</section>
+{% else %}
+<section class="page-hero hero-surface" {% if hero_title %}aria-labelledby="hero-heading-page"{% endif %}>
+  <div class="site-container page-hero-inner">
+    <div class="page-hero-grid {% if hero_right_markup %}page-hero-grid--split{% endif %}">
+      <div>
+        {% if hero_eyebrow %}
+        <p class="page-hero-eyebrow">{{ hero_eyebrow }}</p>
+        {% endif %}
+        {% if hero_title %}
+        <h1 id="hero-heading-page" class="page-hero-title">{{ hero_title }}</h1>
+        {% endif %}
+        {% if hero_subtitle %}
+        <p class="page-hero-subtitle">{{ hero_subtitle }}</p>
+        {% endif %}
+      </div>
+      {% if hero_right_markup %}
+      <div class="page-hero-aside d-none d-lg-block">
+        {{ hero_right_markup | safe }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}

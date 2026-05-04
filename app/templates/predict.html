@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Predict — Crime Predictor{% endblock %}
+{% block hero %}
+{% set hero_eyebrow = "Inference" %}
+{% set hero_title = "Predict crime category" %}
+{% set hero_subtitle = "Enter province, city, timing, and weapon—the model suggests a likely Crime_Category consistent with training data." %}
+{% include 'includes/page_hero.html' %}
+{% endblock %}
+{% block content %}
+<div class="site-container cp-page-shell cp-stack">
+  {% if not ml_ready %}
+  <div class="alert alert-warning alert-surface shadow-sm d-flex gap-3 align-items-start" role="alert">
+    <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1 text-warning" aria-hidden="true"></i>
+    <div>
+      <strong>Model not loaded.</strong> Train first via <a href="{{ url_for('main.train') }}" class="alert-link fw-medium">Train</a>
+      or <code>python scripts/train.py</code> (see README). You can still open the form
+      for layout preview; submission will fail until artifacts exist under
+      <code>models/</code>.
+    </div>
+  </div>
+  {% endif %}
+
+  {% if error_msg %}
+  <div class="alert alert-danger alert-surface shadow-sm d-flex gap-3 align-items-start" role="alert">
+    <i class="bi bi-x-circle-fill flex-shrink-0 mt-1" aria-hidden="true"></i>
+    <div>{{ error_msg }}</div>
+  </div>
+  {% endif %}
+
+  {% if result_label %}
+  <div class="card surface-card border-0 result-highlight cp-animate-rise">
+    <div class="card-body p-4 p-md-5">
+      <p class="cp-result-label text-muted mb-3">Predicted category</p>
+      <p class="h3 fw-bold text-result mb-0 d-flex align-items-center gap-2">
+        <i class="bi bi-check-circle-fill text-success" aria-hidden="true"></i>
+        {{ result_label }}
+      </p>
+      {% if prob_rows %}
+      <hr class="my-4 opacity-50" />
+      <p class="small text-muted mb-3 fw-semibold">Estimated confidence (top classes)</p>
+      <div class="d-flex flex-column gap-3">
+        {% for row in prob_rows %}
+        <div>
+          <div class="d-flex justify-content-between small mb-1">
+            <span>{{ row.label }}</span>
+            <span class="fw-medium">{{ "%.1f"|format(row.prob) }}%</span>
+          </div>
+          <div class="progress cp-progress-thin">
+            <div
+              class="progress-bar bg-result-bar"
+              role="progressbar"
+              style="width: {{ row.prob }}%"
+              aria-valuenow="{{ row.prob }}"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            ></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card surface-card border-0 cp-predict-card">
+    <div class="card-body p-4 p-md-5">
+      <header class="cp-form-card-header">
+        <span class="cp-icon-chip" aria-hidden="true"><i class="bi bi-sliders2"></i></span>
+        <div class="cp-form-card-header-text">
+          <p class="cp-form-card-eyebrow">Incident inputs</p>
+          <h2 class="cp-form-card-title">Describe the incident context</h2>
+          <p class="cp-form-card-lead mb-0">
+            Select values that match your CSV columns (<strong>Province</strong>, <strong>City</strong>, <strong>Hour</strong>,
+            <strong>Month</strong>, <strong>Weapon_Used</strong>). The model maps rare cities to <strong>Other</strong> the same way as training.
+          </p>
+        </div>
+      </header>
+
+      <form method="post" action="{{ url_for('main.predict') }}" class="cp-predict-form needs-validation" novalidate>
+        <div class="cp-form-fields-stack">
+          <section class="cp-form-section" aria-labelledby="predict-section-location">
+            <h3 id="predict-section-location" class="cp-form-section-title">Location</h3>
+            <div class="cp-form-grid-2">
+              <div class="cp-form-field">
+                <label for="province" class="form-label">Province</label>
+                <select
+                  class="form-select"
+                  id="province"
+                  name="Province"
+                  required
+                  {% if not ml_ready %}disabled{% endif %}
+                >
+                  <option value="" disabled {% if not form_prefill.get('Province') %}selected{% endif %}>Choose province…</option>
+                  {% for p in choices.get('Province', []) %}
+                  <option value="{{ p }}" {% if form_prefill.get('Province') == p %}selected{% endif %}>{{ p }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="cp-form-field">
+                <label for="city" class="form-label">City</label>
+                <select
+                  class="form-select"
+                  id="city"
+                  name="City"
+                  required
+                  {% if not ml_ready %}disabled{% endif %}
+                >
+                  <option value="" disabled {% if not form_prefill.get('City') %}selected{% endif %}>Choose city…</option>
+                  {% for c in choices.get('City', []) %}
+                  <option value="{{ c }}" {% if form_prefill.get('City') == c %}selected{% endif %}>{{ c }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <p class="cp-form-hint mb-0" role="note">
+              <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+              Rare cities are mapped to <strong>Other</strong> at inference (same as training).
+            </p>
+          </section>
+
+          <section class="cp-form-section" aria-labelledby="predict-section-timing">
+            <h3 id="predict-section-timing" class="cp-form-section-title">Timing &amp; weapon</h3>
+            <div class="cp-form-grid-3">
+              <div class="cp-form-field">
+                <label for="hour" class="form-label">Hour (0–23)</label>
+                <select class="form-select" id="hour" name="Hour" {% if not ml_ready %}disabled{% endif %}>
+                  {% for h in hours %}
+                  <option value="{{ h }}" {% if form_prefill.get('Hour', '12')|string == h|string %}selected{% endif %}>{{ '%02d'|format(h|int) }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="cp-form-field">
+                <label for="month" class="form-label">Month</label>
+                <select
+                  class="form-select"
+                  id="month"
+                  name="Month"
+                  required
+                  {% if not ml_ready %}disabled{% endif %}
+                >
+                  <option value="" disabled {% if not form_prefill.get('Month') %}selected{% endif %}>Choose month…</option>
+                  {% for m in choices.get('Month', []) %}
+                  <option value="{{ m }}" {% if form_prefill.get('Month') == m %}selected{% endif %}>{{ m }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="cp-form-field">
+                <label for="weapon" class="form-label">Weapon</label>
+                <select
+                  class="form-select"
+                  id="weapon"
+                  name="Weapon_Used"
+                  {% if not ml_ready %}disabled{% endif %}
+                >
+                  {% for w in choices.get('Weapon_Used', []) %}
+                  <option value="{{ w }}" {% if form_prefill.get('Weapon_Used') == w %}selected{% endif %}>{{ w }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {% if ml_ready %}
+        <div class="cp-form-actions">
+          <button type="submit" class="btn btn-primary cp-btn-predict cp-btn-predict--lg">
+            <i class="bi bi-lightning-charge-fill me-2" aria-hidden="true"></i> Run prediction
+          </button>
+        </div>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

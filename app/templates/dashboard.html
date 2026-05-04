@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Crime Predictor{% endblock %}
+{# Plotly must load before inline chart scripts in each card (they call Plotly.newPlot). #}
+{% block head_extra %}
+<script
+  src="https://cdn.plot.ly/plotly-2.30.1.min.js"
+  charset="utf-8"
+  crossorigin="anonymous"
+></script>
+{% endblock %}
+{% block hero %}
+{% set hero_eyebrow = "Visualization" %}
+{% set hero_title = "Analytics dashboard" %}
+{% set hero_subtitle = "Interactive charts from the active crime dataset—province, timing, categories, and geographic sample." %}
+{% include 'includes/page_hero.html' %}
+{% endblock %}
+{% block content %}
+<div class="site-container cp-page-shell cp-stack">
+  {% if dashboard_error %}
+  <div class="alert alert-warning alert-surface shadow-sm d-flex gap-3 align-items-start" role="alert">
+    <i class="bi bi-graph-down-arrow flex-shrink-0 mt-1 text-warning" aria-hidden="true"></i>
+    <div><strong>Dashboard unavailable.</strong> {{ dashboard_error }}</div>
+  </div>
+  {% elif chart_cards %}
+  <div class="cp-dashboard-grid">
+    {% for chart in chart_cards %}
+    <div class="card surface-card border-0 h-100 chart-card">
+      <div class="card-header border-bottom">
+        <h2 class="h6 fw-semibold mb-0">{{ chart.title }}</h2>
+      </div>
+      <div class="card-body chart-card-body">{{ chart.html | safe }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center text-muted cp-empty-state">
+    <i class="bi bi-bar-chart-line d-block mb-3 fs-2 opacity-50" aria-hidden="true"></i>
+    <p class="mb-0">No chart data.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
