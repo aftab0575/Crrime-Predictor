@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+ENV/
+env/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Secrets & local env — never commit API keys (GEMINI_API_KEY, etc.)
+.env.*.local
+*.pem
+
+# Flask
+instance/
+.webassets-cache/
+
+# Tests / coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Trained artifacts (regenerate with `python scripts/train.py`)
+models/*
+!models/.gitkeep
+
+# Optional: large pickle exports
+*.pkl
+
+# IDE / OS
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+config.bat
+node_modules

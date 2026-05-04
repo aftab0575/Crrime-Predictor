@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}About — Crime Predictor{% endblock %}
+{% block hero %}
+{% set hero_eyebrow = "Project documentation" %}
+{% set hero_title = "About this project" %}
+{% set hero_subtitle = "How the dataset is structured, how models are trained, and how to interpret predictions—written for reviewers and thesis readers." %}
+{% set hero_right_markup %}
+        <div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-pill page-hero-pill">
+          <i class="bi bi-journal-text text-accent"></i>
+          <span class="text-white-50">FYP — Crime Data Analysis</span>
+        </div>
+{% endset %}
+{% include 'includes/page_hero.html' %}
+{% endblock %}
+{% block content %}
+<div class="site-container cp-page-shell cp-stack">
+  <div class="about-two-col">
+    <div class="cp-stack">
+      <div class="card about-section-card surface-card border-0 shadow-sm">
+        <div class="card-body p-4 p-md-5">
+          <div class="d-flex gap-3 mb-4">
+            <span class="about-icon about-icon-data"><i class="bi bi-table"></i></span>
+            <div>
+              <h2 class="h5 fw-semibold text-dark mb-1">Dataset</h2>
+              <p class="small text-muted mb-0">Schema, location, and active file behavior</p>
+            </div>
+          </div>
+          <p class="text-secondary mb-3 lh-lg">
+            Datasets are tabular CSV files under <code>data/</code> (for example
+            <code>data/pakistan_crime_dataset_1000.csv</code>). Each row is one
+            <strong>incident-like record</strong>: where it happened (
+            <strong>Province</strong>, <strong>City</strong>), timing (
+            <strong>Hour</strong>, <strong>Month</strong>),
+            <strong>Weapon_Used</strong>, descriptive fields such as
+            <strong>Crime_Type</strong>, and the high-level label column
+            <strong>Crime_Category</strong> used as the prediction target. Column layout must
+            stay consistent with <code>scripts/train.py</code> so training and the web form
+            remain aligned.
+          </p>
+          <div class="cp-callout-muted p-3 p-md-4 mb-0">
+            <p class="small fw-semibold text-dark mb-2">
+              <i class="bi bi-pin-map text-primary me-2" aria-hidden="true"></i> City bucketing
+            </p>
+            <p class="small text-secondary mb-0 lh-base">
+              Only the most frequent city names are kept as-is; rarer cities are grouped
+              (e.g. <code>Other</code>) so inference uses the same encoding as training. After
+              you train on a CSV, the dashboard and prediction UI use that file as the
+              <em>active</em> dataset—or the default at startup if you have not retrained in
+              the app.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card about-section-card surface-card border-0 shadow-sm">
+        <div class="card-body p-4 p-md-5">
+          <div class="d-flex gap-3 mb-4">
+            <span class="about-icon about-icon-model"><i class="bi bi-cpu"></i></span>
+            <div>
+              <h2 class="h5 fw-semibold text-dark mb-1">Model training</h2>
+              <p class="small text-muted mb-0">Algorithms, outputs, and where artifacts live</p>
+            </div>
+          </div>
+          <p class="text-secondary mb-3 lh-lg">
+            Training compares <strong>Random Forest</strong> and
+            <strong>Logistic Regression</strong> to predict <strong>Crime_Category</strong>
+            from province, city bucket, hour, month, and weapon. The stronger model on a
+            held-out test split is saved as
+            <code>models/crime_pipeline.joblib</code>, with
+            <code>crime_label_encoder.joblib</code> mapping numeric outputs to category names.
+          </p>
+          <p class="text-secondary mb-0 lh-lg">
+            Run <code>python scripts/train.py</code> or use the in-app
+            <a href="{{ url_for('main.train') }}" class="fw-medium">Train</a> page on
+            <strong>localhost only</strong>—do not expose training on the public Internet.
+          </p>
+        </div>
+      </div>
+
+      <div class="card about-section-card surface-card border-0 shadow-sm">
+        <div class="card-body p-4 p-md-5">
+          <div class="d-flex gap-3 mb-4">
+            <span class="about-icon about-icon-predict"><i class="bi bi-graph-up-arrow"></i></span>
+            <div>
+              <h2 class="h5 fw-semibold text-dark mb-1">What prediction means</h2>
+              <p class="small text-muted mb-0">How to read the Predict page and confidence bars</p>
+            </div>
+          </div>
+          <p class="text-secondary mb-3 lh-lg">
+            The <a href="{{ url_for('main.predict') }}" class="fw-medium">Predict</a> page
+            does <em>not</em> forecast whether a crime will occur or assign legal charges. It
+            answers: given your inputs, <strong>which <code>Crime_Category</code> label in the
+            training data</strong> receives the highest model score? Categories are coarse
+            groups defined in your CSV (for example <em>Violent</em>, <em>Property</em>,
+            <em>Cyber</em>, <em>Drug</em>—the exact set depends on the file you trained on).
+          </p>
+          <div class="about-callout p-3 p-md-4 mb-0">
+            <p class="small fw-semibold text-dark mb-2">
+              <i class="bi bi-info-circle me-1 text-result"></i> Estimated confidence
+            </p>
+            <p class="small text-secondary mb-0 lh-base">
+              Values reflect <code>predict_proba</code>—how the model distributes weight across
+              labels for that single input row. They are <strong>not</strong> real-world crime
+              odds or survey-based location risk; they show how strongly the classifier prefers
+              one category over others in this academic setup.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card about-section-card surface-card border-0 shadow-sm">
+        <div class="card-body p-4 p-md-5">
+          <div class="d-flex gap-3 mb-4">
+            <span class="about-icon about-icon-limit"><i class="bi bi-exclamation-triangle"></i></span>
+            <div>
+              <h2 class="h5 fw-semibold text-dark mb-1">Limitations</h2>
+              <p class="small text-muted mb-0">Scope and responsible use</p>
+            </div>
+          </div>
+          <p class="text-secondary mb-0 lh-lg">
+            Results are illustrative for coursework: they depend on dataset quality, temporal
+            coverage, and simplified features (no external social-media feeds in this build).
+            Broader thesis discussion may reference literature on events and social data as
+            future work. The optional
+            <a href="{{ url_for('main.assistant') }}" class="fw-medium">Assistant</a> page uses
+            Google Gemini with an automatic <strong>aggregate summary</strong> of the active CSV (counts and
+            top categories), not verbatim row dumps sent to the model.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <aside class="about-sidebar-sticky">
+      <div class="about-sidebar-card card border-0">
+        <div class="card-body p-4">
+          <h3 class="cp-sidebar-heading mb-3">Explore the app</h3>
+          <div class="d-grid gap-2">
+            <a
+              class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2"
+              href="{{ url_for('main.dashboard') }}"
+            >
+              <i class="bi bi-bar-chart-line"></i> Dashboard
+            </a>
+            <a
+              class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2"
+              href="{{ url_for('main.predict') }}"
+            >
+              <i class="bi bi-cpu"></i> Predict
+            </a>
+            <a
+              class="btn btn-outline-secondary d-flex align-items-center justify-content-center gap-2"
+              href="{{ url_for('main.train') }}"
+            >
+              <i class="bi bi-lightning-charge"></i> Train model
+            </a>
+          </div>
+          <hr class="my-4 opacity-25" />
+          <h3 class="cp-sidebar-heading mb-2">Authors</h3>
+          <p class="small text-secondary mb-0">FYP — Crime Data Analysis &amp; Prediction.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="text-center text-md-start">
+    <a href="{{ url_for('main.index') }}" class="btn btn-lg btn-dark px-4 cp-btn-dark-rounded">
+      <i class="bi bi-arrow-left me-2"></i> Back to home
+    </a>
+  </div>
+</div>
+{% endblock %}

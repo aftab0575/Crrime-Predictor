@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% block title %}Train model — Crime Predictor{% endblock %}
+{% block hero %}
+{% set hero_eyebrow = "Development" %}
+{% set hero_title = "Train model" %}
+{% set hero_subtitle = "Pick a CSV in data/, start background training, and reload artifacts into the app. Localhost only." %}
+{% include 'includes/page_hero.html' %}
+{% endblock %}
+{% block content %}
+<div class="site-container cp-page-shell cp-stack">
+  {% if not datasets %}
+  <div class="alert alert-warning alert-surface shadow-sm d-flex gap-3 align-items-start" role="alert">
+    <i class="bi bi-folder-x flex-shrink-0 mt-1 text-warning" aria-hidden="true"></i>
+    <div>
+      <strong>No CSV files found.</strong> Add <code>*.csv</code> files to
+      <code>{{ data_dir }}</code>, then reload this page.
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card surface-card border-0">
+    <div class="card-body p-4 p-md-5">
+      {% set section_title = 'Training job' %}
+      {% include 'includes/section_heading.html' %}
+      <form id="train-form" class="row g-3 align-items-end">
+        <div class="col-md-8">
+          <label for="dataset-select" class="form-label"
+            >Dataset</label
+          >
+          <select
+            id="dataset-select"
+            name="dataset"
+            class="form-select"
+            {% if not datasets %}disabled{% endif %}
+          >
+            {% for name in datasets %}
+            <option
+              value="{{ name }}"
+              {% if name == default_dataset %}selected{% endif %}
+            >
+              {{ name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <button
+            type="submit"
+            id="train-btn"
+            class="btn btn-primary btn-lg px-4 w-100 fw-semibold"
+            {% if not datasets %}disabled{% endif %}
+          >
+            <span class="train-btn-label"><i class="bi bi-play-fill me-1"></i>Train model</span>
+            <span
+              class="spinner-border spinner-border-sm align-middle d-none ms-2"
+              id="train-btn-spinner"
+              role="status"
+              aria-hidden="true"
+            ></span>
+          </button>
+        </div>
+      </form>
+
+      <div id="training-panel" class="mt-4 d-none">
+        <div class="d-flex align-items-center gap-3 mb-2">
+          <div
+            class="spinner-border text-primary"
+            id="panel-spinner"
+            role="status"
+          >
+            <span class="visually-hidden">Training…</span>
+          </div>
+          <p class="mb-0 small text-muted" id="training-message">Working…</p>
+        </div>
+        <div class="progress rounded-pill cp-progress-thin">
+          <div
+            class="progress-bar progress-bar-striped progress-bar-animated"
+            id="training-progress"
+            role="progressbar"
+            style="width: 0%"
+            aria-valuenow="0"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          ></div>
+        </div>
+      </div>
+
+      <div id="training-result" class="mt-4 d-none">
+        <div class="alert alert-success alert-surface mb-0 shadow-sm" role="alert" id="training-success">
+        </div>
+        <div class="alert alert-danger alert-surface shadow-sm mb-0 d-none" role="alert" id="training-error">
+        </div>
+        <a href="{{ url_for('main.predict') }}" class="btn btn-outline-primary mt-3 d-none" id="link-predict"
+          >Go to Predict</a
+        >
+      </div>
+    </div>
+  </div>
+
+  <div class="card surface-card-muted border-0">
+    <div class="card-body p-4">
+      <p class="small text-secondary mb-0">
+        <i class="bi bi-info-circle text-primary me-2" aria-hidden="true"></i>
+        For reliable tests with the in-app trainer, run the app with
+        <code>debug=False</code>—Flask’s reloader can interfere with background threads.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const statusUrl = {{ url_for('main.api_training_status') | tojson }};
+  const startUrl = {{ url_for('main.train_start') | tojson }};
+  const trainForm = document.getElementById("train-form");
+  const trainBtn = document.getElementById("train-btn");
+  const btnSpinner = document.getElementById("train-btn-spinner");
+  const select = document.getElementById("dataset-select");
+  const panel = document.getElementById("training-panel");
+  const panelSpinner = document.getElementById("panel-spinner");
+  const msgEl = document.getElementById("training-message");
+  const prog = document.getElementById("training-progress");
+  const resultBox = document.getElementById("training-result");
+  const successAlert = document.getElementById("training-success");
+  const errorAlert = document.getElementById("training-error");
+  const linkPredict = document.getElementById("link-predict");
+
+  let pollTimer = null;
+
+  function clearPoll() {
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }
+
+  function setUIMessage(text, pct) {
+    msgEl.textContent = text || "";
+    const p = typeof pct === "number" ? Math.min(100, Math.max(0, pct)) : 0;
+    prog.style.width = p + "%";
+    prog.setAttribute("aria-valuenow", String(p));
+  }
+
+  function setRunningUI(running) {
+    trainBtn.disabled = !!running;
+    if (running) btnSpinner.classList.remove("d-none");
+    else btnSpinner.classList.add("d-none");
+  }
+
+  function showPanel(show) {
+    panel.classList.toggle("d-none", !show);
+  }
+
+  function applyStatus(data) {
+    setUIMessage(data.message || "", data.pct ?? 0);
+    if (data.status === "running") {
+      resultBox.classList.add("d-none");
+      successAlert.classList.add("d-none");
+      errorAlert.classList.add("d-none");
+      linkPredict.classList.add("d-none");
+      showPanel(true);
+      panelSpinner.classList.remove("d-none");
+      setRunningUI(true);
+      return true;
+    }
+    if (data.status === "done") {
+      clearPoll();
+      showPanel(false);
+      setRunningUI(false);
+      panelSpinner.classList.add("d-none");
+      const m = data.last_metrics || {};
+      successAlert.innerHTML =
+        "<strong>Training complete.</strong> " +
+        (m.selected_model
+          ? "Model: <code>" + m.selected_model + "</code>. "
+          : "") +
+        (m.test_accuracy != null
+          ? "Test accuracy: " + Number(m.test_accuracy).toFixed(4) + "."
+          : "");
+      successAlert.classList.remove("d-none");
+      errorAlert.classList.add("d-none");
+      resultBox.classList.remove("d-none");
+      linkPredict.classList.remove("d-none");
+      return false;
+    }
+    if (data.status === "error") {
+      clearPoll();
+      showPanel(false);
+      setRunningUI(false);
+      panelSpinner.classList.add("d-none");
+      errorAlert.textContent = data.message || "Training failed.";
+      errorAlert.classList.remove("d-none");
+      successAlert.classList.add("d-none");
+      linkPredict.classList.add("d-none");
+      resultBox.classList.remove("d-none");
+      return false;
+    }
+    return false;
+  }
+
+  async function fetchStatus() {
+    const r = await fetch(statusUrl, { headers: { Accept: "application/json" } });
+    if (!r.ok) return;
+    const data = await r.json();
+    applyStatus(data);
+    if (data.status === "running") {
+      if (!pollTimer) pollTimer = setInterval(fetchStatus, 1000);
+    } else {
+      clearPoll();
+    }
+  }
+
+  trainForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    if (!select.value) return;
+    resultBox.classList.add("d-none");
+    successAlert.classList.add("d-none");
+    errorAlert.classList.add("d-none");
+    linkPredict.classList.add("d-none");
+    showPanel(true);
+    setRunningUI(true);
+    setUIMessage("Starting…", 0);
+    panelSpinner.classList.remove("d-none");
+
+    try {
+      const res = await fetch(startUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ dataset: select.value }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.status === 409) {
+        clearPoll();
+        showPanel(false);
+        setRunningUI(false);
+        errorAlert.textContent = body.error || "Training already in progress.";
+        errorAlert.classList.remove("d-none");
+        resultBox.classList.remove("d-none");
+        return;
+      }
+      if (!res.ok) {
+        clearPoll();
+        showPanel(false);
+        setRunningUI(false);
+        errorAlert.textContent = body.error || "Could not start training.";
+        errorAlert.classList.remove("d-none");
+        resultBox.classList.remove("d-none");
+        return;
+      }
+      await fetchStatus();
+    } catch (err) {
+      clearPoll();
+      showPanel(false);
+      setRunningUI(false);
+      errorAlert.textContent = String(err);
+      errorAlert.classList.remove("d-none");
+      resultBox.classList.remove("d-none");
+    }
+  });
+
+  fetchStatus();
+})();
+</script>
+{% endblock %}
